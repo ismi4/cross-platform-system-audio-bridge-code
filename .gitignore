@@ -1,0 +1,39 @@
+# Dependency directories
+node_modules/
+
+# Electron build output
+dist/
+out/
+
+# macOS specific files
+.DS_Store
+
+# Compiled native modules
+*.o
+*.so
+*.dylib
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+
+# IDE specific files
+.vscode/
+.idea/
+
+# Temporary files
+tmp/
+.tmp/
+
+# Build artifacts
+build/
+
+# Optional: if you're using TypeScript
+*.tsbuildinfo
+
+# Raw audio files (if you don't want to track these)
+*.raw
