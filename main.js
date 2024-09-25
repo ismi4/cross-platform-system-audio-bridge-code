@@ -1,9 +1,12 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
+
+let mainWindow;
+let recordingProcess;
 
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
@@ -12,7 +15,7 @@ function createWindow() {
     },
   });
 
-  win.loadFile('index.html');
+  mainWindow.loadFile('index.html');
 }
 
 app.whenReady().then(createWindow);
@@ -31,15 +34,28 @@ app.on('activate', () => {
 
 ipcMain.on('start-recording', (event) => {
   const executablePath = path.join(__dirname, 'audio_recorder');
-  exec(executablePath, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error: ${error.message}`);
-      return;
-    }
-    if (stderr) {
-      console.error(`stderr: ${stderr}`);
-      return;
-    }
-    console.log(`stdout: ${stdout}`);
+  recordingProcess = spawn(executablePath);
+
+  recordingProcess.stdout.on('data', (data) => {
+    console.log(`stdout: ${data}`);
+    mainWindow.webContents.send('recorder-output', data.toString());
   });
+
+  recordingProcess.stderr.on('data', (data) => {
+    console.error(`stderr: ${data}`);
+    mainWindow.webContents.send('recorder-error', data.toString());
+  });
+
+  recordingProcess.on('close', (code) => {
+    console.log(`child process exited with code ${code}`);
+    mainWindow.webContents.send('recording-stopped', code);
+  });
+});
+
+ipcMain.on('stop-recording', (event) => {
+  if (recordingProcess) {
+    recordingProcess.kill('SIGINT');
+  } else {
+    mainWindow.webContents.send('recording-stopped', 0);
+  }
 });

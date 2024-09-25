@@ -3,11 +3,16 @@
 #import <CoreAudio/CoreAudio.h>
 #import <AVFoundation/AVFoundation.h>
 #import <chrono>
+#import <thread>
+#import <csignal>
+#import <ctime>
+#import <iomanip>
+#import <sstream>
 
 #define NUM_BUFFERS 3
 #define BUFFER_SIZE 4096
 #define SAMPLE_RATE 44100
-#define RECORD_DURATION 10 // Duration in seconds for each file
+#define RECORD_DURATION 30 // Duration in seconds for each file
 
 AudioQueueRef queue;
 AudioQueueBufferRef buffers[NUM_BUFFERS];
@@ -18,10 +23,21 @@ UInt32 numPacketsToWrite;
 std::chrono::steady_clock::time_point startTime;
 int fileCounter = 0;
 
+bool shouldContinueRecording = true;
+
 static void CreateNewAudioFile() {
-    fileCounter++;
+    // Get current time
+    auto now = std::chrono::system_clock::now();
+    auto in_time_t = std::chrono::system_clock::to_time_t(now);
+    
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&in_time_t), "%Y%m%d_%H%M%S");
+    std::string timeStr = ss.str();
+    
+    std::string fileName = "/tmp/audio_capture_" + timeStr + ".caf";
+    
     CFURLRef fileURL = CFURLCreateWithFileSystemPath(kCFAllocatorDefault,
-                                                     CFStringCreateWithFormat(NULL, NULL, CFSTR("/tmp/audio_capture_%d.caf"), fileCounter),
+                                                     CFStringCreateWithCString(NULL, fileName.c_str(), kCFStringEncodingUTF8),
                                                      kCFURLPOSIXPathStyle,
                                                      false);
     OSStatus status = AudioFileCreateWithURL(fileURL, kAudioFileCAFType, &format, kAudioFileFlags_EraseFile, &audioFile);
@@ -32,7 +48,7 @@ static void CreateNewAudioFile() {
     CFRelease(fileURL);
     currentPacket = 0;
     startTime = std::chrono::steady_clock::now();
-    std::cout << "Created new audio file: /tmp/audio_capture_" << fileCounter << ".caf" << std::endl;
+    std::cout << "Created new audio file: " << fileName << std::endl;
 }
 
 static void HandleInputBuffer(void *inUserData,
@@ -62,8 +78,16 @@ static void HandleInputBuffer(void *inUserData,
     AudioQueueEnqueueBuffer(queue, inBuffer, 0, NULL);
 }
 
+
+void signalHandler(int signum) {
+    std::cout << "Interrupt signal (" << signum << ") received.\n";
+    shouldContinueRecording = false;
+}
+
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
+        // Set up signal handling for SIGINT
+        std::signal(SIGINT, signalHandler);
         std::cout << "Starting audio capture application..." << std::endl;
 
         // Check and request microphone permission
@@ -132,8 +156,18 @@ int main(int argc, const char * argv[]) {
             return 1;
         }
 
-        std::cout << "Audio capture started. Press Enter to stop..." << std::endl;
-        std::cin.get();
+        std::cout << "Audio capture started. Press Ctrl+C to stop..." << std::endl;
+
+        // Set up signal handling for Ctrl+C
+        signal(SIGINT, [](int signum) {
+            std::cout << "Received stop signal. Stopping audio capture..." << std::endl;
+            shouldContinueRecording = false;
+        });
+
+        // Main recording loop
+        while (shouldContinueRecording) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
 
         // Stop and clean up
         std::cout << "Stopping audio queue..." << std::endl;
