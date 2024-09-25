@@ -1,6 +1,6 @@
 # Audio Capture Electron App
 
-This Electron app demonstrates how to capture system audio and microphone sound on MacOS. At the moment we are not discerning between the two sources.
+This simple Electron app captures system audio and microphone audio on MacOS. This app does not discern between system audio and microphone audio. In the future, we will separate microphone and system audio so that we can identify the primary user.
 
 ## Setup
 
@@ -29,15 +29,6 @@ This Electron app demonstrates how to capture system audio and microphone sound 
 
 ## Usage
 
-1. The Electron app window will open.
+1. The Electron app window will open and you will need to grant permission for the app to access the system audio and microphone audio.
 2. Click the "Start Recording" button to begin capturing audio.
-3. The app will capture audio for 10 seconds and save it to a file in your Documents folder.
-4. Check the console output for the exact file location and any error messages.
-
-## Troubleshooting
-
-- On macOS, you will need to grant permission for the app to access the microphone.
-
-## Notes
-
-- The captured audio is saved in a raw format in "/tmp".
+3. The app will capture audio for 30 seconds and save it to a file in your "/tmp" folder.
